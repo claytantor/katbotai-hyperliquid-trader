@@ -77,13 +77,7 @@ It will ask for your MetaMask private key (hidden, never saved to disk). It logs
 **5. Authorize the agent on Hyperliquid**
 The wizard prints your agent address. Go to [app.hyperliquid.xyz](https://app.hyperliquid.xyz) → Settings → API, add that address with trading permissions. One-time setup.
 
-**6. Add your wallet key to your shell**
-```bash
-export WALLET_PRIVATE_KEY=0xYourMetaMaskPrivateKey
-```
-Paste that in your `~/.bashrc` or `~/.zshrc` so it persists. The agent key was already saved locally by the wizard.
-
-**7. Start trading — just talk to your agent**
+**6. Start trading — just talk to your agent**
 > "How's the market looking?"
 > "Run the trading workflow"
 > "How's my portfolio doing?"
@@ -137,17 +131,21 @@ After onboarding your identity files will be at:
 └── katbot_token.json      ← JWT token cache (chmod 600)
 ```
 
-### 4. Set Environment Variables
+### 4. Set Environment Variables (Headless / Automated Setups Only)
 
-The wizard will print these for you — paste them into `~/.bashrc` or `~/.zshrc`:
+For normal interactive use, **you don't need to set any env vars** — the wizard saves everything locally and the JWT token is reused automatically. Just re-run the wizard when the token expires.
+
+If you're running in a **headless or automated environment** (e.g. a server, CI, or scheduled cron job), set these in your `~/.bashrc` or `~/.zshrc`:
 
 ```bash
-# Required for re-authentication (never store in files)
+# Wallet key — only needed for unattended token refresh (never store in files)
 export WALLET_PRIVATE_KEY=0xYourMetaMaskPrivateKey
 
-# Agent key (also saved locally by the wizard for convenience)
+# Agent key — saved locally by the wizard, but can also be set here for portability
 export KATBOT_HL_AGENT_PRIVATE_KEY=0xYourAgentPrivateKey
 ```
+
+> ⚠️ Never commit these values to git. Use a secrets manager or your shell profile only.
 
 ### 5. Authorize the Agent on Hyperliquid
 
