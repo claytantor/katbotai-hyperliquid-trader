@@ -53,7 +53,7 @@ katbotai-hyperliquid-trader/
 
 ---
 
-## Quick Start (7 Steps to Your First Trade)
+## Quick Start (6 Steps to Your First Trade)
 
 **1. Get OpenClaw running**
 Install [OpenClaw](https://docs.openclaw.ai) and have an agent running. That's your AI assistant that will do the trading.
