@@ -71,85 +71,48 @@ pip install requests eth-account
 uv add requests eth-account
 ```
 
-### 3. Create Your Identity Config
+### 3. Run the Onboarding Wizard
 
-Create an identity folder for your agent:
-
-```bash
-mkdir -p ~/.openclaw/workspace/katbot-identity
-```
-
-Create `~/.openclaw/workspace/katbot-identity/katbot_config.json`:
-
-```json
-{
-  "base_url": "https://api.katbot.ai",
-  "wallet_address": "0xYourMetaMaskWalletAddress",
-  "portfolio_id": 5,
-  "portfolio_name": "my-hl-mainnet",
-  "chain_id": 42161
-}
-```
-
-Copy the client script:
+Instead of manually configuring files and env vars, run the interactive wizard:
 
 ```bash
-cp scripts/katbot_client.py ~/.openclaw/workspace/katbot-identity/
+python3 scripts/katbot_onboard.py
+```
+
+The wizard will:
+1. **Prompt for your MetaMask private key** (hidden input — never saved to disk)
+2. **Authenticate** with `api.katbot.ai` via SIWE (Sign-In with Ethereum)
+3. **List existing portfolios** or walk you through creating a new one
+4. **Save the agent private key and config** to `~/.openclaw/workspace/katbot-identity/` (mode 600)
+5. **Print the Hyperliquid agent authorization steps** and env var export lines
+
+After onboarding your identity files will be at:
+
+```
+~/.openclaw/workspace/katbot-identity/
+├── katbot_config.json     ← portfolio config (wallet address, portfolio ID, chain)
+├── katbot_secrets.json    ← agent private key (chmod 600, never commit)
+└── katbot_token.json      ← JWT token cache (chmod 600)
 ```
 
 ### 4. Set Environment Variables
 
+The wizard will print these for you — paste them into `~/.bashrc` or `~/.zshrc`:
+
 ```bash
-export WALLET_PRIVATE_KEY=0xYourWalletPrivateKey
+# Required for re-authentication (never store in files)
+export WALLET_PRIVATE_KEY=0xYourMetaMaskPrivateKey
+
+# Agent key (also saved locally by the wizard for convenience)
 export KATBOT_HL_AGENT_PRIVATE_KEY=0xYourAgentPrivateKey
 ```
 
-Add these to `~/.bashrc` or `~/.zshrc` to persist them.
+### 5. Authorize the Agent on Hyperliquid
 
-### 5. Test Authentication
-
-```bash
-python3 scripts/katbot_client.py
-# Should print: ✅ Authenticated as 0xYour...
-# Then list your portfolios and show portfolio state
-```
-
----
-
-## Creating a Portfolio
-
-If you don't have a Katbot portfolio yet:
-
-```bash
-python3 -c "
-import sys; sys.path.insert(0, 'scripts')
-from katbot_client import get_token, _auth
-import requests
-
-token = get_token()
-r = requests.post('https://api.katbot.ai/portfolio', json={
-  'name': 'my-hl-mainnet',
-  'description': 'OpenClaw agent-managed portfolio',
-  'initial_balance': 1000.0,
-  'portfolio_type': 'HYPERLIQUID',
-  'is_testnet': False,
-  'tokens_selected': ['BTC', 'ETH', 'SOL']
-}, headers=_auth(token))
-data = r.json()
-print(f'Portfolio ID: {data[\"id\"]}')
-print(f'Agent Address: {data[\"agent_address\"]}')
-print(f'Agent Priv Key: {data[\"agent_private_key\"]}')
-print('Save the Agent Private Key as KATBOT_HL_AGENT_PRIVATE_KEY!')
-"
-```
-
-⚠️ The `agent_private_key` is shown **once**. Save it immediately as your `KATBOT_HL_AGENT_PRIVATE_KEY`.
-
-Then authorize the agent on Hyperliquid:
-1. Copy the `agent_address` from the response
-2. Go to [app.hyperliquid.xyz](https://app.hyperliquid.xyz) → Settings → API
-3. Add agent address as an API Wallet with trading permissions
-4. Set expiry to 180 days and confirm the MetaMask transaction
+The wizard prints your agent address. Then:
+1. Go to [app.hyperliquid.xyz](https://app.hyperliquid.xyz) → Settings → API
+2. Add agent address as an API Wallet with trading permissions
+3. Set expiry to 180 days and confirm the MetaMask transaction
 
 ---
 

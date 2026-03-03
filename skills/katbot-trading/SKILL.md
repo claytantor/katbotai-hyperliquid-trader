@@ -45,8 +45,28 @@ This skill teaches the agent how to use the Katbot.ai API to manage a Hyperliqui
 
 The skill provides access to the following scripts located in `{baseDir}/tools/`:
 
+- `katbot_onboard.py`: **First-time setup wizard.** Authenticates via SIWE, creates or selects a portfolio, and saves identity files locally. Run this once before using the skill.
 - `katbot_client.py`: Core API client for authentication and portfolio state.
 - `katbot_workflow.py`: End-to-end trading workflow (BMI -> Recommendation).
 - `token_selector.py`: Momentum-based token selection via CoinGecko.
+
+## First-Time Setup
+
+When a user first installs this skill, guide them through onboarding:
+
+```
+python3 {baseDir}/tools/katbot_onboard.py
+```
+
+The wizard will:
+1. Prompt for their MetaMask private key (hidden input, never saved to disk)
+2. Authenticate with api.katbot.ai via SIWE
+3. List existing portfolios or create a new one
+4. Save the agent private key and config to `~/.openclaw/workspace/katbot-identity/`
+5. Print instructions for authorizing the agent on Hyperliquid
+
+After onboarding, the identity files live at:
+- `~/.openclaw/workspace/katbot-identity/katbot_config.json` — portfolio config
+- `~/.openclaw/workspace/katbot-identity/katbot_secrets.json` — agent private key (mode 600)
 
 To run these tools, use `exec` with `PYTHONPATH={baseDir}/tools` and the appropriate environment variables.
