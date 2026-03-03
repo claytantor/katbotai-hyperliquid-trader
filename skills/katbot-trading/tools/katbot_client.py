@@ -1,0 +1,1 @@
+../../../scripts/katbot_client.py
