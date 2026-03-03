@@ -53,7 +53,49 @@ katbotai-hyperliquid-trader/
 
 ---
 
-## Installation
+## Quick Start (7 Steps to Your First Trade)
+
+**1. Get OpenClaw running**
+Install [OpenClaw](https://docs.openclaw.ai) and have an agent running. That's your AI assistant that will do the trading.
+
+**2. Install the skill**
+```bash
+clawhub install katbot-trading
+```
+
+**3. Install Python deps**
+```bash
+pip install requests eth-account
+```
+
+**4. Run the onboarding wizard**
+```bash
+python3 ~/.openclaw/workspace/skills/katbot-trading/tools/katbot_onboard.py
+```
+It will ask for your MetaMask private key (hidden, never saved to disk). It logs you into Katbot.ai, creates your Hyperliquid portfolio, and saves your agent key locally.
+
+**5. Authorize the agent on Hyperliquid**
+The wizard prints your agent address. Go to [app.hyperliquid.xyz](https://app.hyperliquid.xyz) → Settings → API, add that address with trading permissions. One-time setup.
+
+**6. Add your wallet key to your shell**
+```bash
+export WALLET_PRIVATE_KEY=0xYourMetaMaskPrivateKey
+```
+Paste that in your `~/.bashrc` or `~/.zshrc` so it persists. The agent key was already saved locally by the wizard.
+
+**7. Start trading — just talk to your agent**
+> "How's the market looking?"
+> "Run the trading workflow"
+> "How's my portfolio doing?"
+> "Close the position"
+
+The agent checks the BMI, picks tokens, gets a recommendation, and asks you to confirm before executing anything. Your keys never leave your machine.
+
+> The only manual part is step 5 — the Hyperliquid agent authorization requires a MetaMask signature in the browser. Everything else is automated.
+
+---
+
+## Installation (Detailed)
 
 ### 1. Install the Skill via ClawHub
 
