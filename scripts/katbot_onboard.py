@@ -25,7 +25,7 @@ from eth_account import Account
 from eth_account.messages import encode_defunct
 
 DEFAULT_BASE_URL = "https://api.katbot.ai"
-DEFAULT_IDENTITY_DIR = os.path.expanduser("~/.openclaw/workspace/katbot-identity")
+DEFAULT_IDENTITY_DIR = os.getenv("KATBOT_IDENTITY_DIR", os.path.expanduser("~/.openclaw/workspace/katbot-identity"))
 DEFAULT_CHAIN_ID = 42161  # Arbitrum
 
 

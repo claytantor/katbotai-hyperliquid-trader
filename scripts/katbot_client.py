@@ -9,15 +9,40 @@ from eth_account import Account
 from eth_account.messages import encode_defunct
 
 BASE_URL = os.getenv("KATBOT_BASE_URL", "https://api.katbot.ai")
+IDENTITY_DIR = os.getenv("KATBOT_IDENTITY_DIR", os.path.expanduser("~/.openclaw/workspace/katbot-identity"))
+
+# File paths
+TOKEN_FILE = os.path.join(IDENTITY_DIR, "katbot_token.json")
+SECRETS_FILE = os.path.join(IDENTITY_DIR, "katbot_secrets.json")
+CONFIG_FILE = os.path.join(IDENTITY_DIR, "katbot_config.json")
+
 # Use environment variables for keys to follow OpenClaw security rules
 WALLET_PRIVATE_KEY = os.getenv("WALLET_PRIVATE_KEY")
 AGENT_PRIVATE_KEY = os.getenv("KATBOT_HL_AGENT_PRIVATE_KEY")
-TOKEN_FILE = os.path.join(os.path.dirname(__file__), "katbot_token.json")
+
+# If agent key not in env, try loading from secrets file
+if not AGENT_PRIVATE_KEY and os.path.exists(SECRETS_FILE):
+    try:
+        with open(SECRETS_FILE) as f:
+            secrets = json.load(f)
+            AGENT_PRIVATE_KEY = secrets.get("agent_private_key")
+    except Exception:
+        pass  # Fail silently if file is corrupt or unreadable
+
+def get_config() -> dict:
+    """Load configuration from the identity file."""
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE) as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
 
 def authenticate() -> str:
     """Perform SIWE login and return a fresh JWT. Saves token to disk."""
     if not WALLET_PRIVATE_KEY:
-        raise ValueError("WALLET_PRIVATE_KEY environment variable not set")
+        raise ValueError("WALLET_PRIVATE_KEY environment variable not set (required for re-authentication)")
     
     account = Account.from_key(WALLET_PRIVATE_KEY)
     address = account.address
@@ -37,20 +62,36 @@ def authenticate() -> str:
     r.raise_for_status()
     token_data = r.json()
 
+    # Ensure directory exists
+    os.makedirs(IDENTITY_DIR, exist_ok=True)
+    
+    # Save token with restricted permissions
     with open(TOKEN_FILE, "w") as f:
         json.dump(token_data, f, indent=2)
+    try:
+        os.chmod(TOKEN_FILE, 0o600)
+    except Exception:
+        pass
 
     return token_data["access_token"]
 
 def get_token() -> str:
     if os.path.exists(TOKEN_FILE):
-        with open(TOKEN_FILE) as f:
-            data = json.load(f)
-        token = data.get("access_token", "")
-        if token:
-            r = requests.get(f"{BASE_URL}/me", headers=_auth(token))
-            if r.status_code == 200:
-                return token
+        try:
+            with open(TOKEN_FILE) as f:
+                data = json.load(f)
+            token = data.get("access_token", "")
+            if token:
+                # Verify token is still valid
+                try:
+                    r = requests.get(f"{BASE_URL}/me", headers=_auth(token), timeout=5)
+                    if r.status_code == 200:
+                        return token
+                except Exception:
+                    pass
+        except Exception:
+            pass
+            
     return authenticate()
 
 def _auth(token: str, agent_key: str = None) -> dict:
