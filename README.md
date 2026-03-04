@@ -21,7 +21,7 @@ This repository contains the **OpenClaw skill** for Katbot.ai trading — giving
 | [Katbot.ai account](https://katbot.ai) | Whitelisted (pre-alpha) |
 | [MetaMask](https://metamask.io) | Connected to Arbitrum network |
 | [Hyperliquid account](https://app.hyperliquid.xyz) | Testnet or Mainnet |
-| Python 3.11+ + uv | For running the trading scripts |
+| Python 3.11+ | For running the trading scripts |
 
 ---
 
@@ -102,9 +102,7 @@ Or clone manually and point your agent at `skills/katbot-trading/SKILL.md`.
 ### 2. Install Python Dependencies
 
 ```bash
-pip install requests eth-account
-# or with uv:
-uv add requests eth-account
+pip install -r skills/katbot-trading/requirements.txt
 ```
 
 ### 3. Run the Onboarding Wizard
@@ -133,7 +131,7 @@ After onboarding your identity files will be at:
 
 ### 4. Set Environment Variables (Headless / Automated Setups Only)
 
-For normal interactive use, **you don't need to set any env vars** — the wizard saves everything locally and the JWT token is reused automatically. Just re-run the wizard when the token expires.
+For normal interactive use, **you don't need to set any env vars** — the wizard saves everything locally and the JWT token is reused automatically.
 
 If you're running in a **headless or automated environment** (e.g. a server, CI, or scheduled cron job), set these in your `~/.bashrc` or `~/.zshrc`:
 
@@ -159,10 +157,7 @@ The wizard prints your agent address. Then:
 ## Running the Trading Workflow
 
 ```bash
-KATBOT_HL_AGENT_PRIVATE_KEY=0x... \
 python3 scripts/katbot_workflow.py \
-  --portfolio-id 5 \
-  --bmi-threshold 15 \
   --top 5
 ```
 

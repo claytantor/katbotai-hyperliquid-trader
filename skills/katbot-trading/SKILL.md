@@ -1,6 +1,6 @@
 ---
 name: katbot-trading
-version: 0.1.4
+version: 0.1.5
 description: Live crypto trading on Hyperliquid via Katbot.ai. Includes BMI market analysis, token selection, and AI-powered trade execution.
 # Note: Homepage URL removed to avoid GitHub API rate limit errors during publish
 metadata:
@@ -8,9 +8,9 @@ metadata:
     "openclaw":
       {
         "emoji": "📈",
-        "requires": { "bins": ["python3", "uv"], "env": ["WALLET_PRIVATE_KEY", "KATBOT_HL_AGENT_PRIVATE_KEY"] },
+        "requires": { "bins": ["python3"], "env": ["WALLET_PRIVATE_KEY", "KATBOT_HL_AGENT_PRIVATE_KEY"] },
         "primaryEnv": "KATBOT_HL_AGENT_PRIVATE_KEY",
-        "install": "uv pip install -r requirements.txt"
+        "install": "pip install -r requirements.txt"
       }
   }
 ---
@@ -30,7 +30,7 @@ This skill teaches the agent how to use the Katbot.ai API to manage a Hyperliqui
 ## Setup Requirements
 
 - **Katbot API**: `https://api.katbot.ai`
-- **Tools**: This skill uses `uv` for fast Python dependency management. Run the install command to set up the environment.
+- **Tools**: This skill uses standard Python packages. Run the install command to set up the environment.
 - **Environment Variables**:
   - `WALLET_PRIVATE_KEY`: Your MetaMask wallet private key. **Used only for onboarding (SIWE login).** It is ephemeral and should NOT be persisted in shell history or env files. If the session expires, re-run onboarding.
   - `KATBOT_HL_AGENT_PRIVATE_KEY`: The agent private key for the Katbot portfolio. **Primary key for daily trading operations.** 
@@ -63,7 +63,7 @@ When a user first installs this skill, guide them through onboarding:
 
 ```bash
 # Install dependencies
-uv pip install -r requirements.txt
+pip install -r requirements.txt
 
 # Run onboarding wizard
 python3 {baseDir}/tools/katbot_onboard.py
