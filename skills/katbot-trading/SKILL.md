@@ -1,14 +1,15 @@
 ---
 name: katbot-trading
+version: 0.1.1
 description: Live crypto trading on Hyperliquid via Katbot.ai. Includes BMI market analysis, token selection, and AI-powered trade execution.
+# Note: Homepage URL removed to avoid GitHub API rate limit errors during publish
 metadata:
   {
     "openclaw":
       {
         "emoji": "📈",
         "requires": { "bins": ["python3", "uv"], "env": ["WALLET_PRIVATE_KEY", "KATBOT_HL_AGENT_PRIVATE_KEY"] },
-        "primaryEnv": "KATBOT_HL_AGENT_PRIVATE_KEY",
-        "homepage": "https://github.com/claytantor/katbotai-hyperliquid-trader"
+        "primaryEnv": "KATBOT_HL_AGENT_PRIVATE_KEY"
       }
   }
 ---

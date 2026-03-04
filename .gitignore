@@ -1,0 +1,24 @@
+# ClawdHub install metadata (created on install, not part of skill)
+.clawdhub/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Environment variables
+.env
+.env.*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Private keys and secrets
+*.pem
+*.key
+katbot_secrets.json
+katbot-identity/
