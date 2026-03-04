@@ -1,6 +1,6 @@
 ---
 name: katbot-trading
-version: 0.1.5
+version: 0.1.6
 description: Live crypto trading on Hyperliquid via Katbot.ai. Includes BMI market analysis, token selection, and AI-powered trade execution.
 # Note: Homepage URL removed to avoid GitHub API rate limit errors during publish
 metadata:
