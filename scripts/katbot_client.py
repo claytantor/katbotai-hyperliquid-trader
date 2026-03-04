@@ -42,7 +42,11 @@ def get_config() -> dict:
 def authenticate() -> str:
     """Perform SIWE login and return a fresh JWT. Saves token to disk."""
     if not WALLET_PRIVATE_KEY:
-        raise ValueError("WALLET_PRIVATE_KEY environment variable not set (required for re-authentication)")
+        raise ValueError(
+            "\n❌ Session expired and WALLET_PRIVATE_KEY not set.\n"
+            "   Please re-run the onboarding script to refresh your session:\n"
+            "   python3 skills/katbot-trading/tools/katbot_onboard.py"
+        )
     
     account = Account.from_key(WALLET_PRIVATE_KEY)
     address = account.address

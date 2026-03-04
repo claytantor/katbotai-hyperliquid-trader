@@ -1,6 +1,6 @@
 ---
 name: katbot-trading
-version: 0.1.3
+version: 0.1.4
 description: Live crypto trading on Hyperliquid via Katbot.ai. Includes BMI market analysis, token selection, and AI-powered trade execution.
 # Note: Homepage URL removed to avoid GitHub API rate limit errors during publish
 metadata:
@@ -32,7 +32,7 @@ This skill teaches the agent how to use the Katbot.ai API to manage a Hyperliqui
 - **Katbot API**: `https://api.katbot.ai`
 - **Tools**: This skill uses `uv` for fast Python dependency management. Run the install command to set up the environment.
 - **Environment Variables**:
-  - `WALLET_PRIVATE_KEY`: Your MetaMask wallet private key. **Used only for initial onboarding (SIWE login) or re-authentication.** It is **NEVER saved to disk** by the onboarding script.
+  - `WALLET_PRIVATE_KEY`: Your MetaMask wallet private key. **Used only for onboarding (SIWE login).** It is ephemeral and should NOT be persisted in shell history or env files. If the session expires, re-run onboarding.
   - `KATBOT_HL_AGENT_PRIVATE_KEY`: The agent private key for the Katbot portfolio. **Primary key for daily trading operations.** 
     - The onboarding script saves this key securely to `~/.openclaw/workspace/katbot-identity/katbot_secrets.json` (mode 600) for persistence.
     - Alternatively, you can set it as an environment variable for purely ephemeral execution.
