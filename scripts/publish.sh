@@ -20,6 +20,8 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 SKILL_DIR="${PROJECT_ROOT}/skills/katbot-trading"
 DRY_RUN=false
 VERBOSE=false
+BUMP=false
+BUMP_PART="minor"
 
 # Colors for output
 RED='\033[0;31m'
@@ -68,11 +70,16 @@ Options:
     --dry-run       Show what would be published without actually publishing
     --verbose       Enable verbose output
     --skill-dir     Custom skill directory path (default: skills/katbot-trading)
+    --bump          Auto-increment the minor version in SKILL.md before publishing
+    --bump-patch    Auto-increment the patch/build version (X.Y.Z+1) before publishing
     --help          Show this help message
 
 Examples:
     # Publish normally
     ./scripts/publish.sh
+
+    # Auto-increment minor version and publish
+    ./scripts/publish.sh --bump
 
     # Test publish without making changes
     ./scripts/publish.sh --dry-run
@@ -172,6 +179,32 @@ check_git_status() {
     fi
 }
 
+bump_version() {
+    local part="${1:-minor}"  # major, minor, or patch
+    local skill_md="$SKILL_DIR/SKILL.md"
+    local current=$(grep "^version:" "$skill_md" | head -1 | sed 's/.*: //' | xargs)
+    if [ -z "$current" ]; then
+        print_error "Cannot bump: version not found in SKILL.md"
+        exit 1
+    fi
+
+    local major minor patch
+    IFS='.' read -r major minor patch <<< "$current"
+    local new_version
+    case "$part" in
+        major) new_version="$((major + 1)).0.0" ;;
+        minor) new_version="${major}.$((minor + 1)).0" ;;
+        patch) new_version="${major}.${minor}.$((patch + 1))" ;;
+        *)
+            print_error "Unknown bump type: $part (use major, minor, or patch)"
+            exit 1
+            ;;
+    esac
+
+    sed -i "s/^version: .*/version: ${new_version}/" "$skill_md"
+    print_success "Version bumped: ${current} → ${new_version}"
+}
+
 publish_skill() {
     print_header "Publishing Skill to Clawhub"
 
@@ -227,6 +260,16 @@ main() {
                 SKILL_DIR="$2"
                 shift 2
                 ;;
+            --bump)
+                BUMP=true
+                BUMP_PART="minor"
+                shift
+                ;;
+            --bump-patch)
+                BUMP=true
+                BUMP_PART="patch"
+                shift
+                ;;
             --help)
                 usage
                 exit 0
@@ -251,7 +294,12 @@ main() {
     
     check_git_status
     echo ""
-    
+
+    if [ "$BUMP" = true ]; then
+        bump_version "$BUMP_PART"
+        echo ""
+    fi
+
     if ! publish_skill; then
         echo ""
         print_error "Publication failed"

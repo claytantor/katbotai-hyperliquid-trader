@@ -21,4 +21,4 @@ Thumbs.db
 *.pem
 *.key
 katbot_secrets.json
-katbot-identity/
+katbot-identity/.installed_version

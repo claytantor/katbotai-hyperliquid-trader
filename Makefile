@@ -1,8 +1,16 @@
-.PHONY: publish publish-dry-run publish-verbose publish-help
+.PHONY: publish publish-bump publish-bump-build publish-dry-run publish-verbose publish-help
 
 # Publish the skill to clawhub
 publish:
 	@bash scripts/publish.sh
+
+# Auto-increment minor version and publish
+publish-bump:
+	@bash scripts/publish.sh --bump
+
+# Auto-increment patch/build number and publish
+publish-bump-build:
+	@bash scripts/publish.sh --bump-patch
 
 # Perform a dry-run of the publish process
 publish-dry-run:
@@ -30,6 +38,8 @@ publish-py-verbose:
 help:
 	@echo "Clawhub Publishing Targets:"
 	@echo "  make publish          - Publish skill to clawhub"
+	@echo "  make publish-bump     - Auto-increment minor version and publish"
+	@echo "  make publish-bump-build - Auto-increment patch/build number and publish"
 	@echo "  make publish-dry-run  - Test publish without making changes"
 	@echo "  make publish-verbose  - Publish with verbose output"
 	@echo "  make publish-help     - Show detailed publish help"

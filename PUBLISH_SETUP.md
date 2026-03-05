@@ -182,6 +182,8 @@ For more detailed troubleshooting, see **scripts/PUBLISH.md**
 ```bash
 make publish-dry-run    # Test first
 make publish            # Publish for real
+make publish-bump   # Auto-increment version and publish
+make publish-bump-build # Bump version, build, and publish
 ```
 
 ## Additional Resources

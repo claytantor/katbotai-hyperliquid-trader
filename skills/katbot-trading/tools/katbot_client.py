@@ -1,6 +1,7 @@
 """
 katbot_client.py — Katbot.ai API client for OpenClaw agents.
 """
+import base64
 import json
 import os
 import time
@@ -39,6 +40,58 @@ def get_config() -> dict:
             return {}
     return {}
 
+def _jwt_expiry(token: str) -> float:
+    """Decode JWT payload (no signature verification) and return exp as a Unix timestamp.
+    Returns 0 if the token is malformed or has no exp claim."""
+    try:
+        parts = token.split(".")
+        if len(parts) != 3:
+            return 0
+        # Add padding so base64 decodes cleanly
+        payload_b64 = parts[1] + "=" * (-len(parts[1]) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(payload_b64))
+        return float(payload.get("exp", 0))
+    except Exception:
+        return 0
+
+def _token_is_valid(token: str, margin_seconds: int = 60) -> bool:
+    """Return True if the token exists and won't expire within margin_seconds."""
+    if not token:
+        return False
+    exp = _jwt_expiry(token)
+    if exp == 0:
+        return False  # can't determine expiry — treat as invalid
+    return time.time() < (exp - margin_seconds)
+
+def _refresh_access_token(refresh_token: str) -> str | None:
+    """Exchange a refresh token for a new access token and refresh token.
+    Both tokens are saved to disk. Returns the new access token, or None if refresh fails."""
+    if not refresh_token:
+        return None
+    try:
+        r = requests.post(
+            f"{BASE_URL}/refresh",
+            json={"refresh_token": refresh_token},
+            timeout=15,
+        )
+        if r.status_code != 200:
+            return None
+        data = r.json()
+        new_access = data.get("access_token", "")
+        new_refresh = data.get("refresh_token", "")
+        if not new_access or not new_refresh:
+            return None
+        os.makedirs(IDENTITY_DIR, exist_ok=True)
+        with open(TOKEN_FILE, "w") as f:
+            json.dump({"access_token": new_access, "refresh_token": new_refresh}, f, indent=2)
+        try:
+            os.chmod(TOKEN_FILE, 0o600)
+        except Exception:
+            pass
+        return new_access
+    except Exception:
+        return None
+
 def authenticate() -> str:
     """Perform SIWE login and return a fresh JWT. Saves token to disk."""
     if not WALLET_PRIVATE_KEY:
@@ -47,7 +100,7 @@ def authenticate() -> str:
             "   Please re-run the onboarding script to refresh your session:\n"
             "   python3 skills/katbot-trading/tools/katbot_onboard.py"
         )
-    
+
     account = Account.from_key(WALLET_PRIVATE_KEY)
     address = account.address
 
@@ -66,10 +119,7 @@ def authenticate() -> str:
     r.raise_for_status()
     token_data = r.json()
 
-    # Ensure directory exists
     os.makedirs(IDENTITY_DIR, exist_ok=True)
-    
-    # Save token with restricted permissions
     with open(TOKEN_FILE, "w") as f:
         json.dump(token_data, f, indent=2)
     try:
@@ -80,22 +130,37 @@ def authenticate() -> str:
     return token_data["access_token"]
 
 def get_token() -> str:
+    """Return a valid access token, using refresh or re-auth as needed.
+
+    Token resolution order:
+    1. Use the saved access token if it is not yet expired.
+    2. If expired, call POST /refresh with the saved refresh token.
+       The API rotates the refresh token on every call, so both tokens are
+       written to disk immediately before returning — the old refresh token
+       is invalid the moment the response arrives.
+    3. If refresh fails (token expired, revoked, or missing), fall back to
+       full SIWE re-authentication via POST /login.
+    """
     if os.path.exists(TOKEN_FILE):
         try:
             with open(TOKEN_FILE) as f:
                 data = json.load(f)
-            token = data.get("access_token", "")
-            if token:
-                # Verify token is still valid
-                try:
-                    r = requests.get(f"{BASE_URL}/me", headers=_auth(token), timeout=5)
-                    if r.status_code == 200:
-                        return token
-                except Exception:
-                    pass
         except Exception:
-            pass
-            
+            data = {}
+
+        access_token = data.get("access_token", "")
+        refresh_token = data.get("refresh_token", "")
+
+        if _token_is_valid(access_token):
+            return access_token
+
+        # Access token expired — attempt refresh regardless of refresh token
+        # expiry (refresh tokens may be opaque and lack a decodable exp claim).
+        if refresh_token:
+            new_token = _refresh_access_token(refresh_token)
+            if new_token:
+                return new_token
+
     return authenticate()
 
 def _auth(token: str, agent_key: str = None) -> dict:

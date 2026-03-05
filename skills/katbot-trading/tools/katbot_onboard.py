@@ -51,8 +51,8 @@ def banner():
     print()
 
 
-def siwe_login(base_url: str, private_key: str, chain_id: int) -> tuple[str, str]:
-    """Authenticate with SIWE. Returns (jwt_token, wallet_address)."""
+def siwe_login(base_url: str, private_key: str, chain_id: int) -> tuple[str, str, str]:
+    """Authenticate with SIWE. Returns (access_token, refresh_token, wallet_address)."""
     account = Account.from_key(private_key)
     address = account.address
 
@@ -76,9 +76,11 @@ def siwe_login(base_url: str, private_key: str, chain_id: int) -> tuple[str, str
         timeout=15,
     )
     r.raise_for_status()
-    token = r.json()["access_token"]
+    resp = r.json()
+    access_token = resp["access_token"]
+    refresh_token = resp.get("refresh_token", "")
     print(green("  ✅ Authenticated!"))
-    return token, address
+    return access_token, refresh_token, address
 
 
 def list_portfolios(base_url: str, token: str) -> list:
@@ -106,7 +108,7 @@ def create_portfolio(base_url: str, token: str, name: str, initial_balance: floa
     return r.json()
 
 
-def save_identity(identity_dir: str, config: dict, agent_private_key: str, jwt_token: str):
+def save_identity(identity_dir: str, config: dict, agent_private_key: str, jwt_token: str, refresh_token: str = ""):
     """Write katbot_config.json and katbot_token.json to the identity directory."""
     os.makedirs(identity_dir, exist_ok=True)
 
@@ -120,10 +122,10 @@ def save_identity(identity_dir: str, config: dict, agent_private_key: str, jwt_t
         json.dump({"agent_private_key": agent_private_key}, f, indent=2)
     os.chmod(secrets_path, 0o600)
 
-    # Save JWT token for reuse
+    # Save JWT and refresh tokens for reuse
     token_path = os.path.join(identity_dir, "katbot_token.json")
     with open(token_path, "w") as f:
-        json.dump({"access_token": jwt_token}, f, indent=2)
+        json.dump({"access_token": jwt_token, "refresh_token": refresh_token}, f, indent=2)
     os.chmod(token_path, 0o600)
 
     print(green(f"  ✅ Config saved  → {config_path}"))
@@ -146,6 +148,12 @@ def print_env_instructions(wallet_private_key_placeholder: str, agent_private_ke
     print(f"     This key has been securely saved to: {os.path.join(DEFAULT_IDENTITY_DIR, 'katbot_secrets.json')}")
     print("     It allows the agent to place trades on your behalf.")
     print("     Do not share this file or export the key unless necessary for automation.")
+    print()
+    print(yellow("  3. Session Tokens"))
+    print("     Your access token and refresh token have been saved to katbot_token.json.")
+    print("     The refresh token is valid for 7 days.")
+    print("     If you do not use the agent within 7 days, your session will expire")
+    print("     and you will need to run this onboarding script again to re-authenticate.")
     print()
 
 
@@ -196,7 +204,7 @@ def main():
     # ── Step 2: Authenticate ───────────────────────────────────────────────────
     print(bold("Step 2: Authenticating with Katbot.ai"))
     try:
-        jwt_token, wallet_address = siwe_login(args.base_url, private_key, args.chain_id)
+        jwt_token, refresh_token, wallet_address = siwe_login(args.base_url, private_key, args.chain_id)
     except Exception as e:
         print(red(f"  ❌ Authentication failed: {e}"))
         sys.exit(1)
@@ -291,7 +299,7 @@ def main():
         "chain_id": args.chain_id,
     }
 
-    save_identity(args.identity_dir, config, agent_private_key, jwt_token)
+    save_identity(args.identity_dir, config, agent_private_key, jwt_token, refresh_token)
 
     # ── Step 5: Instructions ───────────────────────────────────────────────────
     print()
