@@ -1,6 +1,8 @@
 # Publishing the Katbot-Trading Skill to Clawhub
 
-This directory contains automated scripts to publish the `katbot-trading` skill to clawhub. Two versions are provided: a Bash script and a Python script, providing flexibility based on your environment.
+This directory contains **publish tooling only** (`publish.sh`, `publish.py`). The actual trading tool scripts (`katbot_client.py`, `katbot_onboard.py`, `katbot_workflow.py`, `token_selector.py`) live exclusively in `skills/katbot-trading/tools/` — do not add copies here.
+
+Two publish script versions are provided: a Bash script and a Python script, providing flexibility based on your environment.
 
 ## Quick Start
 
@@ -250,13 +252,18 @@ git commit -m "Update skill files"
 ./scripts/publish.sh
 ```
 
-### Module Not Found Error (Python script)
+### Module Not Found Error (Python publish script)
 
 **Solution**: Ensure Python is correctly installed:
 
 ```bash
 python --version  # Should be 3.7 or higher
 ```
+
+> If you're trying to run a trading tool (e.g. `katbot_workflow.py`) and get a `ModuleNotFoundError`, you need to set `PYTHONPATH` to the tools directory:
+> ```bash
+> PYTHONPATH=skills/katbot-trading/tools python3 skills/katbot-trading/tools/katbot_workflow.py
+> ```
 
 ## Script Comparison
 

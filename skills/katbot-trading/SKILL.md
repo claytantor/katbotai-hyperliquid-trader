@@ -61,12 +61,14 @@ The skill manages tokens automatically via `katbot_client.get_token()`:
 
 ## Tools
 
-All scripts are in `{baseDir}/tools/` (dependencies in `requirements.txt`):
+**All tool scripts live exclusively in `{baseDir}/tools/`** — this is the single canonical location. There are no copies elsewhere in the project. Always reference tools via `{baseDir}/tools/<script>` and set `PYTHONPATH={baseDir}/tools` so inter-tool imports resolve correctly.
+
+Dependencies are listed in `{baseDir}/requirements.txt`.
 
 - `ensure_env.sh`: **Run before any tool.** Checks if dependencies are installed for the current skill version and re-installs if needed. Safe to call every time — it exits immediately if already up to date.
 - `katbot_onboard.py`: **First-time setup wizard.** Authenticates via SIWE using your Wallet Key, creates/selects a portfolio, and saves the Agent Key locally to the secure identity directory.
 - `katbot_client.py`: Core API client for authentication and portfolio state. Reads credentials from the identity directory.
-- `katbot_workflow.py`: End-to-end trading workflow (BMI -> Recommendation).
+- `katbot_workflow.py`: End-to-end trading workflow (BMI -> Recommendation). Imports `katbot_client` and `token_selector` — requires `PYTHONPATH={baseDir}/tools`.
 - `token_selector.py`: Momentum-based token selection via CoinGecko.
 
 ## Environment Management
@@ -108,4 +110,10 @@ The wizard will:
 
 After onboarding, the skill runs autonomously using the saved credentials.
 
-To run these tools, use `exec` with `PYTHONPATH={baseDir}/tools`.
+To run these tools, use `exec` with `PYTHONPATH={baseDir}/tools`:
+
+```bash
+PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/katbot_workflow.py
+```
+
+> **Note for contributors**: The `scripts/` directory contains only publish tooling (`publish.sh`, `publish.py`, etc.). Do NOT add copies of tool scripts to `scripts/` — all trading logic lives solely in `{baseDir}/tools/`.
