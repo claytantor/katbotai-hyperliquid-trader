@@ -311,6 +311,36 @@ def get_recommendations(token: str, portfolio_id: int) -> list:
     return r.json()
 
 
+def update_portfolio(token: str, portfolio_id: int, 
+                     name: str = None, 
+                     tokens_selected: list = None,
+                     max_history_messages: int = None) -> dict:
+    """Update portfolio settings (name, tokens, history limit).
+    
+    Args:
+        token: Auth token
+        portfolio_id: Portfolio ID
+        name: New portfolio name (optional)
+        tokens_selected: List of token symbols (e.g., ["BTC", "ETH", "SOL"])
+        max_history_messages: Conversation history limit
+    
+    Returns:
+        Updated portfolio info
+    """
+    payload = {}
+    if name is not None:
+        payload["name"] = name
+    if tokens_selected is not None:
+        payload["tokens_selected"] = tokens_selected
+    if max_history_messages is not None:
+        payload["max_history_messages"] = max_history_messages
+    
+    r = requests.put(f"{BASE_URL}/portfolio/{portfolio_id}",
+                     json=payload, headers=_auth(token))
+    r.raise_for_status()
+    return r.json()
+
+
 def chat(token: str, portfolio_id: int, message: str) -> dict:
     """Send a chat message to the portfolio agent (async, returns ticket)."""
     payload = {"portfolio_id": portfolio_id, "message": message}
@@ -350,7 +380,7 @@ def main():
     
     if len(sys.argv) < 2:
         print("Usage: katbot_client.py <action> [args]")
-        print("Actions: portfolio-state, execute, close-position, recommendations, request-recommendation, poll-recommendation")
+        print("Actions: portfolio-state, execute, close-position, recommendations, request-recommendation, poll-recommendation, update-portfolio")
         sys.exit(1)
     
     action = sys.argv[1]
@@ -402,6 +432,28 @@ def main():
             print("ERROR: ticket_id required")
             sys.exit(1)
         result = poll_recommendation(token, ticket_id)
+        print(json.dumps(result, indent=2))
+    
+    elif action == "update-portfolio":
+        # Parse args: --tokens BTC,ETH,SOL or --name "New Name"
+        tokens_arg = None
+        name_arg = None
+        i = 2
+        while i < len(sys.argv):
+            if sys.argv[i] == "--tokens" and i + 1 < len(sys.argv):
+                tokens_arg = sys.argv[i + 1].split(",")
+                i += 2
+            elif sys.argv[i] == "--name" and i + 1 < len(sys.argv):
+                name_arg = sys.argv[i + 1]
+                i += 2
+            else:
+                i += 1
+        
+        if not tokens_arg and not name_arg:
+            print("Usage: update-portfolio --tokens BTC,ETH,SOL [--name \"New Name\"]")
+            sys.exit(1)
+        
+        result = update_portfolio(token, int(portfolio_id), name=name_arg, tokens_selected=tokens_arg)
         print(json.dumps(result, indent=2))
     
     else:
