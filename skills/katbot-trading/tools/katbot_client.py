@@ -31,6 +31,7 @@ ENV_FILE = None
 if not BASE_URL or not IDENTITY_DIR:
     # Try tubman-bobtail-py location: env/local/katbot_client.env
     env_candidates = [
+        Path("/home/clay/tubman-bobtail-py/env/local/katbot_client.env"),
         Path(__file__).parent.parent.parent / "env" / "local" / "katbot_client.env",
         Path(__file__).parent.parent / "env" / "local" / "katbot_client.env",
         Path(__file__).parent / "katbot_client.env",
