@@ -9,12 +9,14 @@ against that momentum to support trade decisions.
 Usage:
     python btc_momentum.py                        # print full report
     python btc_momentum.py --json                 # machine-readable output
-    python btc_momentum.py --send                 # send to Telegram
+    python btc_momentum.py --send                 # send via openclaw (requires OPENCLAW_NOTIFY_CHANNEL + OPENCLAW_NOTIFY_TARGET)
 """
 
 import argparse
 import json
 import math
+import os
+import pathlib
 import subprocess
 import sys
 import time
@@ -27,11 +29,14 @@ BTC_PAIR = "XBTUSD"
 INTERVAL = 60  # 1-hour candles
 LOOKBACK = 24  # candles
 
-CHANNEL = "telegram"
-TARGET_ID = "1738247601"
-PROJECT_DIR = "/home/clay/tubman-bobtail-py"
-UV = "/home/clay/.local/bin/uv"
-KATBOT_CLIENT_DIR = "/home/clay/katbotai-hyperliquid-trader/skills/katbot-trading/tools"
+# Messaging — read channel and target from env vars so alerts work with any openclaw channel.
+# Set OPENCLAW_NOTIFY_CHANNEL (e.g. "telegram", "slack", "discord") and
+# OPENCLAW_NOTIFY_TARGET (e.g. a chat/user ID) to enable --send.
+CHANNEL = os.environ.get("OPENCLAW_NOTIFY_CHANNEL", "")
+TARGET_ID = os.environ.get("OPENCLAW_NOTIFY_TARGET", "")
+
+# Resolve tools directory dynamically from this file's location — no hardcoded paths
+_TOOLS_DIR = str(pathlib.Path(__file__).parent.resolve())
 
 
 # ─── Data Fetch ───────────────────────────────────────────────────────────────
@@ -248,16 +253,25 @@ def evaluate_positions(bmi_data: dict, positions: list[dict]) -> list[dict]:
 
 
 def get_open_positions() -> list[dict]:
+    """Fetch open positions via katbot_client using the current Python interpreter."""
     script = f"""
-import sys, requests, json
-sys.path.insert(0, '{KATBOT_CLIENT_DIR}')
-from katbot_client import get_token, get_portfolio
+import sys, json
+sys.path.insert(0, {_TOOLS_DIR!r})
+from katbot_client import get_token, get_portfolio, get_config
 token = get_token()
-p = get_portfolio(token, 4)
-print(json.dumps(p.get('open_positions', [])))
+config = get_config()
+portfolio_id = config.get('portfolio_id')
+if not portfolio_id:
+    print('[]')
+else:
+    p = get_portfolio(token, portfolio_id)
+    print(json.dumps(p.get('open_positions', [])))
 """
-    result = subprocess.run([UV, "run", "python", "-c", script],
-                            capture_output=True, text=True, cwd=PROJECT_DIR)
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True, text=True, cwd=_TOOLS_DIR,
+        env={**os.environ, "PYTHONPATH": _TOOLS_DIR},
+    )
     if result.returncode != 0:
         return []
     for line in result.stdout.splitlines():
@@ -295,8 +309,14 @@ def format_report(bmi_data: dict, position_health: list[dict]) -> str:
 
 
 def send_message(msg: str):
+    if not CHANNEL or not TARGET_ID:
+        print(
+            "Warning: OPENCLAW_NOTIFY_CHANNEL and OPENCLAW_NOTIFY_TARGET must both be set to send messages. Skipping.",
+            file=sys.stderr,
+        )
+        return
     subprocess.run(
-        ["openclaw", "message", "send", "--target", TARGET_ID, "--channel", CHANNEL, "--message", msg],
+        ["openclaw", "message", "send", "--channel", CHANNEL, "--target", TARGET_ID, "--message", msg],
         capture_output=True, text=True
     )
 

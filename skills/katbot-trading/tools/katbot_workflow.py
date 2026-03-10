@@ -1,13 +1,22 @@
-import sys, os, time, json, argparse, importlib.util
+import sys, os, time, json, argparse, importlib.util, pathlib, subprocess
 import requests
 from katbot_client import get_token, request_recommendation, poll_recommendation, execute_recommendation, get_portfolio, get_config
 from token_selector import get_top_tokens
 
-# Mock BMI for now as the obsidian script is external
+_TOOLS_DIR = str(pathlib.Path(__file__).parent.resolve())
+
 def get_bmi():
-    # In a real setup, we would call the btc_momentum.py script
-    # For the skill, we can either include it or fetch it via API if available
-    return {"bmi": 25, "signal": "BULLISH", "btc_24h_pct": 3.5}
+    """Fetch BMI by running btc_momentum.py --json with the current interpreter."""
+    script_path = os.path.join(_TOOLS_DIR, "btc_momentum.py")
+    result = subprocess.run(
+        [sys.executable, script_path, "--json"],
+        capture_output=True, text=True,
+        env={**os.environ, "PYTHONPATH": _TOOLS_DIR},
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"btc_momentum.py failed: {result.stderr.strip()}")
+    data = json.loads(result.stdout)
+    return {"bmi": data["bmi"], "signal": data["signal"], "btc_24h_pct": data["btc_24h_pct"]}
 
 def main():
     parser = argparse.ArgumentParser()

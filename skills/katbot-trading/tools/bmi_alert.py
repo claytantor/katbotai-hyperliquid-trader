@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """
-BMI Alert Workflow — Fetches BMI data and sends a Telegram alert.
+BMI Alert Workflow — Fetches BMI data and sends an alert via openclaw.
+
+Set OPENCLAW_NOTIFY_CHANNEL (e.g. "telegram", "slack") and OPENCLAW_NOTIFY_TARGET
+to enable message delivery. Without these, the alert is printed to stdout only.
 """
 import os
 import sys
@@ -73,15 +76,26 @@ def get_top_tokens(top=5, bearish=False):
         return []
 
 def send_alert(message):
-    """Send alert via OpenClaw."""
+    """Send alert via openclaw using the configured channel and target.
+
+    Reads OPENCLAW_NOTIFY_CHANNEL and OPENCLAW_NOTIFY_TARGET from the environment.
+    If either is unset, prints the message to stdout and skips the send.
+    """
+    channel = os.environ.get("OPENCLAW_NOTIFY_CHANNEL", "")
+    target = os.environ.get("OPENCLAW_NOTIFY_TARGET", "")
+    if not channel or not target:
+        print(
+            "Warning: OPENCLAW_NOTIFY_CHANNEL and OPENCLAW_NOTIFY_TARGET must both be set to send alerts. Printing to stdout.",
+            file=sys.stderr,
+        )
+        print(message)
+        return
     subprocess.run(
-        ["openclaw", "message", "send", "--target", "1738247601", "--channel", "telegram", "--message", message],
+        ["openclaw", "message", "send", "--channel", channel, "--target", target, "--message", message],
         capture_output=True,
         text=True
     )
     print(message)
-
-STATE_FILE = "/home/clay/.openclaw/workspace/memory/bmi_alert_state.json"
 
 def load_state():
     try:
