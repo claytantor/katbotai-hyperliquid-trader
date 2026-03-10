@@ -22,6 +22,8 @@ This skill teaches the agent how to use the Katbot.ai API to manage a Hyperliqui
 ## Capabilities
 
 1. **Market Analysis**: Check the BTC Momentum Index (BMI) and 24h gainers/losers.
+    - `btc_momentum.py`: Calculates the BMI (BTC Momentum Index) based on trend, MACD, body, volume, and RSI. Returns a signal (BULLISH, BEARISH, NEUTRAL).
+    - `bmi_alert.py`: Runs `btc_momentum.py` and sends a Telegram alert if the market direction has changed. Uses `portfolio_tokens.json` for custom token tracking.
 2. **Token Selection**: Automatically pick the best tokens for the current market direction.
 3. **Recommendations**: Get AI-powered trade setups (Entry, TP, SL, Leverage).
 4. **Execution**: Execute and close trades on Hyperliquid with user confirmation.
@@ -39,6 +41,17 @@ Dependencies are listed in `{baseDir}/requirements.txt`.
 - `katbot_client.py`: Core API client. Handles authentication, token refresh, portfolio management, recommendations, trade execution, and chat. Also usable as a CLI script.
 - `katbot_workflow.py`: End-to-end trading workflow (BMI -> token selection -> recommendation). Imports `katbot_client` and `token_selector` — requires `PYTHONPATH={baseDir}/tools`.
 - `token_selector.py`: Momentum-based token selection via CoinGecko.
+- `btc_momentum.py`: Calculates BTC Momentum Index (BMI).
+- `bmi_alert.py`: Telegram alerting workflow for BMI changes.
+
+### BMI Analysis Tool Usage
+
+The BMI (BTC Momentum Index) is a proprietary indicator used to determine market bias.
+
+- **Check BMI**: `PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/btc_momentum.py --json`
+- **Run Alert Workflow**: `PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/bmi_alert.py` (sends a Telegram message if direction changed)
+
+The `bmi_alert.py` script reads `~/.openclaw/workspace/portfolio_tokens.json` to include specific token performance in the alert message.
 
 > **Note for contributors**: The `scripts/` directory contains only publish tooling (`publish.sh`, `publish.py`, etc.). Do NOT add copies of tool scripts there — all trading logic lives solely in `{baseDir}/tools/`.
 
