@@ -10,9 +10,9 @@ This script:
   5. Prints env var export lines to add to your shell profile
 
 Usage:
-  python3 scripts/katbot_onboard.py
-  python3 scripts/katbot_onboard.py --base-url https://api.katbot.ai
-  python3 scripts/katbot_onboard.py --identity-dir /custom/path
+  python3 {baseDir}/tools/katbot_onboard.py
+  python3 {baseDir}/tools/katbot_onboard.py --base-url https://api.katbot.ai
+  python3 {baseDir}/tools/katbot_onboard.py --identity-dir /custom/path
 """
 
 import argparse

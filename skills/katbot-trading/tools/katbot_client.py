@@ -28,14 +28,24 @@ IDENTITY_DIR = os.getenv("KATBOT_IDENTITY_DIR")
 
 # If not set via env vars, try loading from .env file (tubman-bobtail-py mode)
 ENV_FILE = None
+
+# 1. (user homedir)/katbot_client.env
+# 2. (openclaw_home)/katbot_identity/katbot_client.env
 if not BASE_URL or not IDENTITY_DIR:
-    # Try tubman-bobtail-py location: env/local/katbot_client.env
     env_candidates = [
         Path("/home/clay/tubman-bobtail-py/env/local/katbot_client.env"),
         Path(__file__).parent.parent.parent / "env" / "local" / "katbot_client.env",
         Path(__file__).parent.parent / "env" / "local" / "katbot_client.env",
         Path(__file__).parent / "katbot_client.env",
+        Path.home() / "katbot_client.env",
     ]
+
+    # Add the second candidate only if OPENCLAW_HOME is defined
+    openclaw_home = os.environ.get("OPENCLAW_HOME")
+    if openclaw_home:
+        env_candidates.append(Path(openclaw_home) / "katbot_identity" / "katbot_client.env")
+
+
     for candidate in env_candidates:
         if candidate.exists():
             ENV_FILE = candidate
@@ -53,12 +63,11 @@ if not BASE_URL or not IDENTITY_DIR:
                         BASE_URL = val
                     elif key == "KATBOT_IDENTITY_DIR" and not IDENTITY_DIR:
                         IDENTITY_DIR = val
-                    elif key == "WALLET_PRIVATE_KEY" and not os.getenv("WALLET_PRIVATE_KEY"):
-                        os.environ["WALLET_PRIVATE_KEY"] = val
-                    elif key == "KATBOT_HL_AGENT_PRIVATE_KEY" and not os.getenv("KATBOT_HL_AGENT_PRIVATE_KEY"):
-                        os.environ["KATBOT_HL_AGENT_PRIVATE_KEY"] = val
                     elif key == "CHAIN_ID" and not os.getenv("CHAIN_ID"):
                         os.environ["CHAIN_ID"] = val
+                    # WALLET_PRIVATE_KEY and KATBOT_HL_AGENT_PRIVATE_KEY are intentionally
+                    # NOT loaded from .env files — private keys must be supplied via
+                    # environment variables or the identity directory only.
 
 # Default fallbacks
 if not BASE_URL:

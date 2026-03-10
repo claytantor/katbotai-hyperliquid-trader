@@ -1,6 +1,6 @@
 ---
 name: katbot-trading
-version: 0.2.9
+version: 0.2.16
 description: Live crypto trading on Hyperliquid via Katbot.ai. Includes BMI market analysis, token selection, and AI-powered trade execution.
 # Note: Homepage URL removed to avoid GitHub API rate limit errors during publish
 metadata:
@@ -8,7 +8,7 @@ metadata:
     "openclaw":
       {
         "emoji": "📈",
-        "requires": { "bins": ["python3"], "env": ["WALLET_PRIVATE_KEY", "KATBOT_HL_AGENT_PRIVATE_KEY"] },
+        "requires": { "bins": ["python3"], "env": ["KATBOT_HL_AGENT_PRIVATE_KEY"] },
         "primaryEnv": "KATBOT_HL_AGENT_PRIVATE_KEY",
         "install": "pip install -r requirements.txt"
       }
@@ -22,42 +22,13 @@ This skill teaches the agent how to use the Katbot.ai API to manage a Hyperliqui
 ## Capabilities
 
 1. **Market Analysis**: Check the BTC Momentum Index (BMI) and 24h gainers/losers.
+    - `btc_momentum.py`: Calculates the BMI (BTC Momentum Index) based on trend, MACD, body, volume, and RSI. Returns a signal (BULLISH, BEARISH, NEUTRAL).
+    - `bmi_alert.py`: Runs `btc_momentum.py` and sends a Telegram alert if the market direction has changed. Uses `portfolio_tokens.json` for custom token tracking.
 2. **Token Selection**: Automatically pick the best tokens for the current market direction.
 3. **Recommendations**: Get AI-powered trade setups (Entry, TP, SL, Leverage).
 4. **Execution**: Execute and close trades on Hyperliquid with user confirmation.
 5. **Portfolio Tracking**: Monitor open positions, uPnL, and balances.
-
-## Setup Requirements
-
-- **Katbot API**: `https://api.katbot.ai`
-- **Tools**: This skill uses standard Python packages. Run the install command to set up the environment.
-- **Environment Variables**:
-  - `WALLET_PRIVATE_KEY`: Your MetaMask wallet private key. **Used only for onboarding (SIWE login).** It is ephemeral and should NOT be persisted in shell history or env files. If the session expires, re-run onboarding.
-  - `KATBOT_HL_AGENT_PRIVATE_KEY`: The agent private key for the Katbot portfolio. **Primary key for daily trading operations.** 
-    - The onboarding script saves this key securely to `~/.openclaw/workspace/katbot-identity/katbot_secrets.json` (mode 600) for persistence.
-    - Alternatively, you can set it as an environment variable for purely ephemeral execution.
-- **Config**:
-  - Identity files are stored in `~/.openclaw/workspace/katbot-identity/` (configurable via `KATBOT_IDENTITY_DIR`).
-  - `katbot_config.json`: Contains `wallet_address`, `portfolio_id`, and `chain_id`.
-  - `katbot_token.json`: Contains both `access_token` and `refresh_token` (mode 600).
-
-## Authentication Flow
-
-The skill manages tokens automatically via `katbot_client.get_token()`:
-
-1. **Check access token expiry**: Decode the JWT `exp` claim from `katbot_token.json`. If valid (not expiring within 60s), use it directly.
-2. **Refresh if expired**: If the access token is expired but the `refresh_token` is still valid, call `POST /refresh` with `{"refresh_token": "<token>"}`. On success, save the new `access_token` and `refresh_token` back to `katbot_token.json` (mode 600) automatically.
-3. **Re-authenticate if refresh fails**: If the refresh token is also expired or missing, fall back to full SIWE re-authentication via `POST /login`. This requires `WALLET_PRIVATE_KEY` to be available.
-
-**Never call `/login` if `/refresh` can succeed first.**
-
-## Usage Rules
-
-- **ALWAYS** check the BMI before suggesting a new trade.
-- **NEVER** execute a trade without explicit user confirmation (e.g., "Confirm execution of LONG AAVE?").
-- **NEVER** log or reveal private keys in the chat.
-- **ALWAYS** report the risk/reward ratio and leverage for any recommendation.
-- **ALWAYS** let `get_token()` handle token refresh automatically — do not manually manage tokens.
+6. **Chat**: Send free-form messages to the portfolio agent and receive analysis.
 
 ## Tools
 
@@ -66,10 +37,184 @@ The skill manages tokens automatically via `katbot_client.get_token()`:
 Dependencies are listed in `{baseDir}/requirements.txt`.
 
 - `ensure_env.sh`: **Run before any tool.** Checks if dependencies are installed for the current skill version and re-installs if needed. Safe to call every time — it exits immediately if already up to date.
-- `katbot_onboard.py`: **First-time setup wizard.** Authenticates via SIWE using your Wallet Key, creates/selects a portfolio, and saves the Agent Key locally to the secure identity directory.
-- `katbot_client.py`: Core API client for authentication and portfolio state. Reads credentials from the identity directory.
-- `katbot_workflow.py`: End-to-end trading workflow (BMI -> Recommendation). Imports `katbot_client` and `token_selector` — requires `PYTHONPATH={baseDir}/tools`.
+- `katbot_onboard.py`: **First-time setup wizard.** Authenticates via SIWE using your Wallet Key, creates/selects a portfolio, and saves credentials locally to the secure identity directory.
+- `katbot_client.py`: Core API client. Handles authentication, token refresh, portfolio management, recommendations, trade execution, and chat. Also usable as a CLI script.
+- `katbot_workflow.py`: End-to-end trading workflow (BMI -> token selection -> recommendation). Imports `katbot_client` and `token_selector` — requires `PYTHONPATH={baseDir}/tools`.
 - `token_selector.py`: Momentum-based token selection via CoinGecko.
+- `btc_momentum.py`: Calculates BTC Momentum Index (BMI).
+- `bmi_alert.py`: Telegram alerting workflow for BMI changes.
+
+### BMI Analysis Tool Usage
+
+The BMI (BTC Momentum Index) is a proprietary indicator used to determine market bias.
+
+- **Check BMI**: `PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/btc_momentum.py --json`
+- **Run Alert Workflow**: `PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/bmi_alert.py` (sends a Telegram message if direction changed)
+
+The `bmi_alert.py` script reads `~/.openclaw/workspace/portfolio_tokens.json` to include specific token performance in the alert message.
+
+> **Note for contributors**: The `scripts/` directory contains only publish tooling (`publish.sh`, `publish.py`, etc.). Do NOT add copies of tool scripts there — all trading logic lives solely in `{baseDir}/tools/`.
+
+## Environment Variables
+
+**Normal operation requires only `KATBOT_HL_AGENT_PRIVATE_KEY`.** The skill reads this from `katbot_secrets.json` automatically after onboarding, so it does not need to be set in the environment at all during day-to-day use.
+
+`WALLET_PRIVATE_KEY` is **not** a runtime requirement. It is an emergency fallback used only when both the access token and refresh token have expired and the session must be fully re-established. It must never be pre-set in the environment — supply it interactively only when onboarding or re-onboarding explicitly requires it.
+
+| Variable | When needed | Description |
+|----------|-------------|-------------|
+| `KATBOT_HL_AGENT_PRIVATE_KEY` | First run only (if not yet onboarded) | Agent private key for Hyperliquid trade execution. Onboarding saves it to `katbot_secrets.json` (mode 600). After that the skill loads it from the secrets file automatically — **no env var needed for daily operation.** |
+| `WALLET_PRIVATE_KEY` | Emergency re-auth only | MetaMask wallet key. Used only for SIWE login when session tokens are fully expired. **Never pre-set this in the environment. Never export to a shell profile. Provide interactively only when re-onboarding is required.** |
+| `KATBOT_BASE_URL` | Optional override | API base URL. Default: `https://api.katbot.ai` |
+| `KATBOT_IDENTITY_DIR` | Optional override | Path to identity files directory. Default: `~/.openclaw/workspace/katbot-identity` |
+| `CHAIN_ID` | Optional override | EVM chain ID. Default: `42161` (Arbitrum) |
+
+### `.env` File Loader — CLI/Development Use Only
+
+`katbot_client.py` contains a `.env` file loader for CLI use outside OpenClaw (`tubman-bobtail-py` mode). At import time it searches these paths for a `katbot_client.env` file:
+
+1. `{projectRoot}/env/local/katbot_client.env`
+2. `{baseDir}/../env/local/katbot_client.env`
+3. `{baseDir}/tools/katbot_client.env`
+
+If a file is found, it loads **only non-secret config** from it: `KATBOT_BASE_URL`, `KATBOT_IDENTITY_DIR`, and `CHAIN_ID`. Private keys (`WALLET_PRIVATE_KEY` and `KATBOT_HL_AGENT_PRIVATE_KEY`) are explicitly **not** read from `.env` files — they must come from the environment or the identity directory only.
+
+**Agent rules:**
+- **NEVER** create or suggest creating a `katbot_client.env` containing private keys.
+- **NEVER** place `WALLET_PRIVATE_KEY` or `KATBOT_HL_AGENT_PRIVATE_KEY` in any `.env` file.
+- A `katbot_client.env` is acceptable only for non-secret config (`KATBOT_BASE_URL`, `CHAIN_ID`, `KATBOT_IDENTITY_DIR`, `PORTFOLIO_ID`, `WALLET_ADDRESS`).
+
+## Identity Files
+
+All persistent credentials are stored in `KATBOT_IDENTITY_DIR` (default: `~/.openclaw/workspace/katbot-identity/`). This directory is **outside the project tree** deliberately — its contents are never committed to git.
+
+| File | Mode | Contents |
+|------|------|----------|
+| `katbot_config.json` | 644 | `base_url`, `wallet_address`, `portfolio_id`, `portfolio_name`, `chain_id` |
+| `katbot_token.json` | 600 | `access_token`, `refresh_token` |
+| `katbot_secrets.json` | 600 | `agent_private_key` |
+
+`katbot_client.py` reads all three files automatically. The agent key is loaded from `katbot_secrets.json` if `KATBOT_HL_AGENT_PRIVATE_KEY` is not set in the environment.
+
+**Security properties of identity files:**
+- `katbot_token.json` and `katbot_secrets.json` are written with mode 600 (owner read/write only).
+- `WALLET_PRIVATE_KEY` (MetaMask key) is **never** written to any identity file — it is used only in-memory during onboarding and authentication.
+- If `~/.openclaw/workspace/katbot-identity/` is compromised, an attacker gains the agent trading key and session tokens but **not** the MetaMask wallet key, limiting the blast radius to funds accessible via the Hyperliquid agent wallet.
+
+## Authentication Flow
+
+The skill manages tokens automatically via `katbot_client.get_token()`. **Never call this manually** — all API functions call it internally.
+
+1. **Check access token**: Decode the JWT `exp` claim from `katbot_token.json`. If valid (not expiring within 60s), use it directly.
+2. **Refresh if expired**: If the access token is expired, call `POST /refresh` with `{"refresh_token": "<token>"}`. The API **rotates** the refresh token on every call — both the new `access_token` and new `refresh_token` are written to `katbot_token.json` (mode 600) immediately. The old refresh token is invalid as soon as the response arrives.
+3. **Re-authenticate if refresh fails**: If the refresh token is missing or the `/refresh` call fails, fall back to full SIWE re-authentication via `POST /login`. This requires `WALLET_PRIVATE_KEY`.
+
+**Never call `/login` if `/refresh` can succeed first.**
+
+Refresh tokens are opaque (not JWTs) and expire after **7 days of inactivity**. If the session is fully expired, re-run onboarding.
+
+## Credential Transmission Notice
+
+> **The agent must present this notice to the user and obtain acknowledgement before running onboarding or any trading operation for the first time.**
+
+This skill transmits the **agent trading private key** (`KATBOT_HL_AGENT_PRIVATE_KEY`) to the remote Katbot API (`api.katbot.ai`) on certain calls. This is required for the API to sign and submit trades on-chain via Hyperliquid.
+
+**What leaves your machine and when:**
+
+| Credential | Sent to | On which calls | Why |
+|------------|---------|----------------|-----|
+| `KATBOT_HL_AGENT_PRIVATE_KEY` | `api.katbot.ai` | `request_recommendation`, `execute_recommendation` — in both the `X-Agent-Private-Key` header and the JSON request body | The Katbot API uses it to sign Hyperliquid on-chain transactions on your behalf |
+| `access_token` / `refresh_token` | `api.katbot.ai` | All authenticated API calls — in the `Authorization: Bearer` header | Session authentication |
+| `WALLET_PRIVATE_KEY` | Never sent remotely | Used only locally to sign the SIWE message during onboarding/re-auth | Signature is computed locally; only the resulting signature is sent |
+
+**What this means:**
+- The agent trading key is a high-value credential. Once transmitted, the Katbot API server has access to it for the duration of the request.
+- The MetaMask wallet key (`WALLET_PRIVATE_KEY`) is **never transmitted** — it signs a message locally and the signature alone is sent.
+- If you do not trust `api.katbot.ai` with your agent trading key, do not use this skill.
+
+**Agent instruction:** Before running onboarding or any recommendation/execution call for the first time in a session, inform the user: *"This skill will send your Hyperliquid agent private key to api.katbot.ai to authorize on-chain trades. Do you want to proceed?"* Do not proceed without affirmative confirmation.
+
+## `katbot_client.py` API Reference
+
+All functions require a `token` argument obtained from `get_token()`.
+
+**Key transmission legend used below:**
+- `[key→remote]` — the agent private key is sent to `api.katbot.ai` in this call
+- `[local only]` — no private key is transmitted; only the JWT bearer token is sent
+
+### Authentication `[local only]`
+```python
+token = get_token()          # Returns valid access token (refreshes automatically)
+config = get_config()        # Returns dict from katbot_config.json
+```
+
+### Portfolio `[local only]`
+```python
+portfolios = list_portfolios(token)
+portfolio  = get_portfolio(token, portfolio_id, window="1d")  # window: "1h","1d","7d","30d"
+recs       = get_recommendations(token, portfolio_id)         # List existing recommendations
+```
+
+### Recommendations `[key→remote]`
+> The agent private key is sent to `api.katbot.ai` in both the `X-Agent-Private-Key` header and the JSON body of `request_recommendation`. Confirm user consent before calling.
+
+```python
+ticket = request_recommendation(token, portfolio_id, message)  # [key→remote]
+# ticket = {"ticket_id": "..."}
+
+result = poll_recommendation(token, ticket["ticket_id"], max_wait=60)  # [local only]
+# result = {"status": "COMPLETED"|"FAILED", "recommendation": {...}}
+```
+
+### Trade Execution `[key→remote]`
+> The agent private key is sent to `api.katbot.ai` in both the `X-Agent-Private-Key` header and the JSON body of `execute_recommendation`. Always require explicit user confirmation before calling.
+
+```python
+# [key→remote] — requires user confirmation
+result = execute_recommendation(
+    token, portfolio_id, rec_id,
+    execute_onchain=False,        # True to submit directly to Hyperliquid
+    user_master_address=None      # Optional: override wallet address
+)
+
+# [local only] — agent key sent only in header, not body
+result = close_position(
+    token, portfolio_id, "ETH",
+    user_master_address=None      # Optional: override wallet address
+)
+```
+
+### Chat `[local only]`
+```python
+ticket = chat(token, portfolio_id, "What's the market looking like?")
+result = poll_chat(token, ticket["ticket_id"], max_wait=60)
+# result = {"status": "COMPLETED"|"FAILED", "response": "..."}
+```
+
+### CLI Mode
+`katbot_client.py` can be run as a standalone script (reads `PORTFOLIO_ID` from `.env` or environment):
+
+```bash
+PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/katbot_client.py portfolio-state
+PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/katbot_client.py recommendations
+PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/katbot_client.py request-recommendation "Analyze and recommend"
+PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/katbot_client.py poll-recommendation <ticket_id>
+PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/katbot_client.py execute <rec_id>
+PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/katbot_client.py close-position ETH
+```
+
+## Usage Rules
+
+- **ALWAYS** present the Credential Transmission Notice and obtain user acknowledgement before the first onboarding or trading operation in any session.
+- **ALWAYS** check the BMI before suggesting a new trade.
+- **NEVER** execute a trade without explicit user confirmation (e.g., "Confirm execution of LONG AAVE?").
+- **NEVER** log, print, or reveal any private key or token value in the chat.
+- **ALWAYS** report the risk/reward ratio and leverage for any recommendation.
+- **ALWAYS** let `get_token()` handle token refresh automatically — do not manually manage tokens.
+- **NEVER** pre-set `WALLET_PRIVATE_KEY` in the environment. It is an emergency re-auth key only. If the agent detects it already set in the environment outside of an active onboarding/re-auth session, warn the user and suggest unsetting it.
+- **NEVER** create a `katbot_client.env` file containing `WALLET_PRIVATE_KEY` or `KATBOT_HL_AGENT_PRIVATE_KEY`. The `.env` loader will not inject private keys into the process, but placing them in such a file is still a bad practice that stores secrets on disk unnecessarily.
+- **NEVER** suggest exporting any private key to a shell profile or persistent environment file.
+- **NEVER** read, display, or summarize the contents of `katbot_token.json`, `katbot_secrets.json`, or any file in the identity directory.
 
 ## Environment Management
 
@@ -85,35 +230,34 @@ bash {baseDir}/tools/ensure_env.sh {baseDir}
 - If the skill was upgraded or never installed: runs `pip install -r requirements.txt` and writes the new stamp.
 - If `python3` is missing: prints a clear error and exits with code 1.
 
-### Detecting an Upgrade
+If a tool fails with `ImportError` or `ModuleNotFoundError`, always run `ensure_env.sh` first to sync dependencies before retrying.
 
-If the user says the skill was updated or if a tool fails with an `ImportError` or `ModuleNotFoundError`, always run `ensure_env.sh` first to sync dependencies before retrying.
-
-## First-Time Setup
-
-When a user first installs this skill, guide them through onboarding:
+## First-Time Setup (Install)
 
 ```bash
-# Ensure dependencies are installed
+# 1. Install dependencies
 bash {baseDir}/tools/ensure_env.sh {baseDir}
 
-# Run onboarding wizard
+# 2. Run onboarding wizard (interactive)
 python3 {baseDir}/tools/katbot_onboard.py
 ```
 
 The wizard will:
-1. Prompt for `WALLET_PRIVATE_KEY` (hidden input) if not set in environment.
+1. Prompt for `WALLET_PRIVATE_KEY` (hidden input — never stored to disk).
 2. Authenticate with api.katbot.ai via SIWE.
-3. List existing portfolios or create a new one.
-4. Save the `KATBOT_HL_AGENT_PRIVATE_KEY` and config to `~/.openclaw/workspace/katbot-identity/`.
-5. Print instructions for authorizing the agent on Hyperliquid.
+3. List existing portfolios or create a new Hyperliquid one.
+4. Save `KATBOT_HL_AGENT_PRIVATE_KEY`, `katbot_config.json`, and `katbot_token.json` to `~/.openclaw/workspace/katbot-identity/`.
+5. Print instructions for authorizing the agent wallet on Hyperliquid.
 
-After onboarding, the skill runs autonomously using the saved credentials.
+After onboarding, the skill runs autonomously using the saved credentials. `WALLET_PRIVATE_KEY` is no longer needed unless the session fully expires.
 
-To run these tools, use `exec` with `PYTHONPATH={baseDir}/tools`:
+## Upgrade
+
+When the skill is updated (new version published to clawhub):
 
 ```bash
-PYTHONPATH={baseDir}/tools python3 {baseDir}/tools/katbot_workflow.py
+# Re-run ensure_env.sh — it detects the version change and re-installs dependencies
+bash {baseDir}/tools/ensure_env.sh {baseDir}
 ```
 
-> **Note for contributors**: The `scripts/` directory contains only publish tooling (`publish.sh`, `publish.py`, etc.). Do NOT add copies of tool scripts to `scripts/` — all trading logic lives solely in `{baseDir}/tools/`.
+No re-onboarding is needed for upgrades. The identity files in `~/.openclaw/workspace/katbot-identity/` are preserved across upgrades. If a tool fails after upgrade, run `ensure_env.sh` first.
