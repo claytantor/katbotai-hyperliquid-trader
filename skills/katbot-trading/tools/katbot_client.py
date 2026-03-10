@@ -33,6 +33,9 @@ ENV_FILE = None
 # 2. (openclaw_home)/katbot_identity/katbot_client.env
 if not BASE_URL or not IDENTITY_DIR:
     env_candidates = [
+        Path(__file__).parent.parent.parent / "env" / "local" / "katbot_client.env",
+        Path(__file__).parent.parent / "env" / "local" / "katbot_client.env",
+        Path(__file__).parent / "katbot_client.env",
         Path.home() / "katbot_client.env",
     ]
 
