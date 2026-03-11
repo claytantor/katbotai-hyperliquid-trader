@@ -271,6 +271,36 @@ def list_portfolios(token: str) -> list:
     return r.json()
 
 
+def create_portfolio(token: str, name: str, portfolio_type: str = "PAPER", 
+                     exchange: str = "PAPER_PERPS", agent_private_key: str = None) -> dict:
+    """Create a new paper portfolio.
+    
+    Args:
+        token: JWT access token
+        name: Portfolio name
+        portfolio_type: Type of portfolio (default: "PAPER")
+        exchange: Exchange identifier (default: "PAPER_PERPS")
+        agent_private_key: Optional agent private key (uses AGENT_PRIVATE_KEY if not provided)
+    
+    Returns:
+        Created portfolio dict with id, name, type, etc.
+    """
+    payload = {
+        "name": name,
+        "type": portfolio_type,
+        "exchange": exchange,
+    }
+    
+    # Add agent_private_key if provided or available
+    key = agent_private_key or AGENT_PRIVATE_KEY
+    if key:
+        payload["agent_private_key"] = key
+    
+    r = requests.post(f"{BASE_URL}/portfolio", json=payload, headers=_auth(token))
+    r.raise_for_status()
+    return r.json()
+
+
 def get_portfolio(token: str, portfolio_id: int, window: str = "1d", require_agent: bool = True) -> dict:
     """Get portfolio state with optional time window.
     
