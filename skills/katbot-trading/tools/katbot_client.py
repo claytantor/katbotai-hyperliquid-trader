@@ -12,6 +12,9 @@ Features:
 - Recommendation workflow
 - Trade execution
 - Position closing
+
+IMPORTANT: ALWAYS include X-Agent-Private-Key header for Hyperliquid portfolio calls.
+See MEMORY.md Katbot/Tubman Client Rule for details.
 """
 import base64
 import json
@@ -235,12 +238,30 @@ def get_token() -> str:
 
 
 def _auth(token: str, agent_key: str = None) -> dict:
+    """Build auth headers with optional agent private key.
+    
+    CRITICAL: ALWAYS include X-Agent-Private-Key for Hyperliquid portfolio calls.
+    The API requires this header for all Hyperliquid portfolio endpoints.
+    """
     headers = {"Authorization": f"Bearer {token}"}
+    # Always include agent key if available - required for Hyperliquid portfolios
     if agent_key:
         headers["X-Agent-Private-Key"] = agent_key
     elif AGENT_PRIVATE_KEY:
         headers["X-Agent-Private-Key"] = AGENT_PRIVATE_KEY
     return headers
+
+
+def _require_agent_key() -> str:
+    """Require agent private key to be available, raising clear error if not."""
+    if AGENT_PRIVATE_KEY:
+        return AGENT_PRIVATE_KEY
+    raise ValueError(
+        "\n❌ KATBOT_HL_AGENT_PRIVATE_KEY not set.\n"
+        "   Required for Hyperliquid portfolio operations.\n"
+        "   Set via environment variable or in secrets file:\n"
+        f"   {SECRETS_FILE}"
+    )
 
 
 def list_portfolios(token: str) -> list:
@@ -250,9 +271,31 @@ def list_portfolios(token: str) -> list:
     return r.json()
 
 
-def get_portfolio(token: str, portfolio_id: int, window: str = "1d") -> dict:
-    """Get portfolio state with optional time window."""
-    r = requests.get(f"{BASE_URL}/portfolio/{portfolio_id}", params={"window": window}, headers=_auth(token))
+def get_portfolio(token: str, portfolio_id: int, window: str = "1d", require_agent: bool = True) -> dict:
+    """Get portfolio state with optional time window.
+    
+    Args:
+        token: JWT access token
+        portfolio_id: Portfolio ID to query
+        window: Time window for data (default "1d")
+        require_agent: If True (default), raises error if agent key not available.
+                      Set to False for paper portfolios that don't need agent key.
+    
+    Returns:
+        Portfolio state dict
+        
+    Raises:
+        ValueError: If require_agent=True and KATBOT_HL_AGENT_PRIVATE_KEY not set
+        HTTPError: If API returns error (e.g., 400 for missing agent key on Hyperliquid)
+    """
+    # Get agent key, potentially raising error if required
+    agent_key = _require_agent_key() if require_agent else AGENT_PRIVATE_KEY
+    
+    r = requests.get(
+        f"{BASE_URL}/portfolio/{portfolio_id}", 
+        params={"window": window}, 
+        headers=_auth(token, agent_key)
+    )
     r.raise_for_status()
     return r.json()
 
